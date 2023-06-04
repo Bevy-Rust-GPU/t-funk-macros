@@ -182,18 +182,18 @@ fn impl_function(
                 PartialOrd,
                 Ord,
                 Hash,
-                type_fields::t_funk::macros::Closure,
-                type_fields::t_funk::macros::category::Category,
-                type_fields::t_funk::macros::arrow::Arrow,
+                t_funk::macros::Closure,
+                t_funk::macros::category::Category,
+                t_funk::macros::arrow::Arrow,
             )]
         )
     } else {
         quote!(
             #[derive(
                 Debug,
-                type_fields::t_funk::macros::Closure,
-                type_fields::t_funk::macros::category::Category,
-                type_fields::t_funk::macros::arrow::Arrow,
+                t_funk::macros::Closure,
+                t_funk::macros::category::Category,
+                t_funk::macros::arrow::Arrow,
             )]
         )
     };
@@ -224,7 +224,7 @@ fn impl_function(
 
         #phantom_derives
 
-        impl<#(#gen,)* _Type> type_fields::t_funk::function::Function<#input_tys> for #ident_struct < #(#phantom_types),* >
+        impl<#(#gen,)* _Type> t_funk::function::Function<#input_tys> for #ident_struct < #(#phantom_types),* >
         #where_clause
         {
             type Output = #outputs;
@@ -235,6 +235,6 @@ fn impl_function(
             }
         }
 
-        //type_fields::derive_closure!(#ident_struct < #(#phantom_types),* >);
+        //derive_closure!(#ident_struct < #(#phantom_types),* >);
     ))
 }

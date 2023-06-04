@@ -18,7 +18,7 @@ pub fn impl_pointed(input: DeriveInput) -> TokenStream {
     };
 
     let out = quote!(
-        impl<#(#tys),*> type_fields::t_funk::typeclass::pointed::Pointed for #ident<#(#tys),*> {
+        impl<#(#tys),*> t_funk::typeclass::pointed::Pointed for #ident<#(#tys),*> {
             type Pointed = #pointed;
 
             #[allow(non_snake_case)]

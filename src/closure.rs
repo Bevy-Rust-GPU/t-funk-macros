@@ -11,11 +11,11 @@ pub fn impl_closure(input: DeriveInput) -> TokenStream {
         .map(|type_param| type_param.ident.clone())
         .collect::<Vec<_>>();
 
-    let out = quote!(impl<_Input, #(#tys),*> type_fields::t_funk::closure::Closure<_Input> for #ident < #(#tys),* > where #ident < #(#tys),* >: type_fields::t_funk::function::Function<_Input> {
-        type Output = <#ident < #(#tys),* > as type_fields::t_funk::function::Function<_Input>>::Output;
+    let out = quote!(impl<_Input, #(#tys),*> t_funk::closure::Closure<_Input> for #ident < #(#tys),* > where #ident < #(#tys),* >: t_funk::function::Function<_Input> {
+        type Output = <#ident < #(#tys),* > as t_funk::function::Function<_Input>>::Output;
 
         fn call(self, input: _Input) -> Self::Output {
-            <#ident < #(#tys),* > as type_fields::t_funk::function::Function<_Input>>::call(input)
+            <#ident < #(#tys),* > as t_funk::function::Function<_Input>>::call(input)
         }
     });
 

@@ -4,7 +4,6 @@ mod closure;
 mod copointed;
 mod functions;
 mod lenses;
-mod paths;
 mod phantom;
 mod pointed;
 
@@ -101,9 +100,9 @@ pub fn functor(input: TokenStream) -> TokenStream {
 // Derive `Fmap` for a newtype.
 newtype_derive! {
     Fmap::fmap(#ident, #ty) => {
-        impl<_Function, #ty> type_fields::t_funk::typeclass::functor::Fmap<_Function> for #ident<#ty>
+        impl<_Function, #ty> t_funk::typeclass::functor::Fmap<_Function> for #ident<#ty>
         where
-            _Function: type_fields::t_funk::closure::Closure<#ty>,
+            _Function: t_funk::closure::Closure<#ty>,
         {
             type Fmap = #ident<_Function::Output>;
 
@@ -119,14 +118,14 @@ newtype_derive! {
 // Derive `Replace` for a newtype.
 newtype_derive! {
     Replace::replace(#ident, #ty) => {
-        impl<#ty, U> type_fields::t_funk::typeclass::functor::Replace<U> for #ident<#ty>
+        impl<#ty, U> t_funk::typeclass::functor::Replace<U> for #ident<#ty>
         where
-            #ident<#ty>: type_fields::t_funk::typeclass::functor::Fmap<type_fields::t_funk::closure::Curry2A<type_fields::t_funk::function::Const, U>>,
+            #ident<#ty>: t_funk::typeclass::functor::Fmap<t_funk::closure::Curry2A<t_funk::function::Const, U>>,
         {
-            type Replace = <#ident<#ty> as type_fields::t_funk::typeclass::functor::Fmap<type_fields::t_funk::closure::Curry2A<type_fields::t_funk::function::Const, U>>>::Fmap;
+            type Replace = <#ident<#ty> as t_funk::typeclass::functor::Fmap<t_funk::closure::Curry2A<t_funk::function::Const, U>>>::Fmap;
 
             fn replace(self, t: U) -> Self::Replace {
-                type_fields::t_funk::typeclass::functor::Fmap::fmap(self, type_fields::t_funk::closure::Curry2::prefix2(type_fields::t_funk::function::Const, t))
+                t_funk::typeclass::functor::Fmap::fmap(self, t_funk::closure::Curry2::prefix2(t_funk::function::Const, t))
             }
         }
     }
@@ -142,7 +141,7 @@ pub fn applicative(input: TokenStream) -> TokenStream {
 // Derive `Pure` for a newtype.
 newtype_derive! {
     Pure::pure(#ident, #ty) => {
-        impl<#ty> type_fields::t_funk::typeclass::applicative::Pure for #ident<#ty>
+        impl<#ty> t_funk::typeclass::applicative::Pure for #ident<#ty>
         {
             type Pure<U> = #ident<U>;
 
@@ -156,16 +155,16 @@ newtype_derive! {
 // Derive `Apply` for a newtype.
 newtype_derive! {
     Apply::apply(#ident, #ty) => {
-        impl<#ty, _Value> type_fields::t_funk::typeclass::applicative::Apply<#ident<_Value>> for #ident<#ty>
+        impl<#ty, _Value> t_funk::typeclass::applicative::Apply<#ident<_Value>> for #ident<#ty>
         where
-            #ty: type_fields::t_funk::closure::Closure<_Value>,
+            #ty: t_funk::closure::Closure<_Value>,
         {
             type Apply = #ident<#ty::Output>;
 
             #[allow(non_snake_case)]
             fn apply(self, a: #ident<_Value>) -> Self::Apply
             where
-                #ty: type_fields::t_funk::closure::Closure<_Value>,
+                #ty: t_funk::closure::Closure<_Value>,
             {
                 let #ident(#ty) = self;
                 let #ident(_Value) = a;
@@ -187,9 +186,9 @@ pub fn monad(input: TokenStream) -> TokenStream {
 // Derive `Chain` for a newtype.
 newtype_derive! {
     Chain::chain(#ident, #ty) => {
-        impl<#ty, _Function> type_fields::t_funk::typeclass::monad::Chain<_Function> for #ident<#ty>
+        impl<#ty, _Function> t_funk::typeclass::monad::Chain<_Function> for #ident<#ty>
         where
-            _Function: type_fields::t_funk::closure::Closure<#ty>,
+            _Function: t_funk::closure::Closure<#ty>,
         {
             type Chain = _Function::Output;
 
@@ -206,15 +205,15 @@ newtype_derive! {
 /*
 newtype_derive! {
     Then::then(#ident, #ty) => {
-        impl<#ty, _Function> type_fields::t_funk::typeclass::monad::Then<_Function> for #ident<#ty>
+        impl<#ty, _Function> t_funk::typeclass::monad::Then<_Function> for #ident<#ty>
         where
-            #ident<#ty>: type_fields::t_funk::typeclass::functor::Replace<type_fields::t_funk::function::Id>,
-            <#ident<#ty> as type_fields::t_funk::typeclass::functor::Replace<type_fields::t_funk::function::Id>>::Replace: type_fields::t_funk::typeclass::applicative::Apply<_Function>,
+            #ident<#ty>: t_funk::typeclass::functor::Replace<t_funk::function::Id>,
+            <#ident<#ty> as t_funk::typeclass::functor::Replace<t_funk::function::Id>>::Replace: t_funk::typeclass::applicative::Apply<_Function>,
         {
-            type Then = <<#ident<#ty> as type_fields::t_funk::typeclass::functor::Replace<type_fields::t_funk::function::Id>>::Replace as type_fields::t_funk::typeclass::applicative::Apply<_Function>>::Apply;
+            type Then = <<#ident<#ty> as t_funk::typeclass::functor::Replace<t_funk::function::Id>>::Replace as t_funk::typeclass::applicative::Apply<_Function>>::Apply;
 
             fn then(self, f: _Function) -> Self::Then {
-               type_fields::t_funk::typeclass::applicative::Apply::apply(type_fields::t_funk::typeclass::functor::Replace::replace(self, type_fields::t_funk::function::Id), f)
+               t_funk::typeclass::applicative::Apply::apply(t_funk::typeclass::functor::Replace::replace(self, t_funk::function::Id), f)
             }
         }
     }
@@ -222,12 +221,12 @@ newtype_derive! {
 */
 newtype_derive! {
     Then::then(#ident, #ty) => {
-        impl<#ty, _Function> type_fields::t_funk::typeclass::monad::Then<_Function> for #ident<#ty> where #ident<#ty>: type_fields::t_funk::typeclass::monad::Chain<type_fields::t_funk::closure::Curry2A<type_fields::t_funk::function::Const, _Function>>
+        impl<#ty, _Function> t_funk::typeclass::monad::Then<_Function> for #ident<#ty> where #ident<#ty>: t_funk::typeclass::monad::Chain<t_funk::closure::Curry2A<t_funk::function::Const, _Function>>
         {
-            type Then = <#ident<#ty> as type_fields::t_funk::typeclass::monad::Chain<type_fields::t_funk::closure::Curry2A<type_fields::t_funk::function::Const, _Function>>>::Chain;
+            type Then = <#ident<#ty> as t_funk::typeclass::monad::Chain<t_funk::closure::Curry2A<t_funk::function::Const, _Function>>>::Chain;
 
             fn then(self, f: _Function) -> Self::Then {
-               type_fields::t_funk::typeclass::monad::Chain::<_>::chain(self, type_fields::t_funk::closure::Curry2::prefix2(type_fields::t_funk::function::Const, f))
+               t_funk::typeclass::monad::Chain::<_>::chain(self, t_funk::closure::Curry2::prefix2(t_funk::function::Const, f))
             }
         }
     }
@@ -242,9 +241,9 @@ pub fn semigroup(input: TokenStream) -> TokenStream {
 // Derive `Mappend` for a newtype.
 newtype_derive! {
     Mappend::mappend(#ident, #ty) => {
-        impl<#ty, _Type> type_fields::t_funk::typeclass::semigroup::Mappend<#ident<_Type>> for #ident<#ty>
+        impl<#ty, _Type> t_funk::typeclass::semigroup::Mappend<#ident<_Type>> for #ident<#ty>
         where
-            #ty: type_fields::t_funk::typeclass::semigroup::Mappend<_Type>,
+            #ty: t_funk::typeclass::semigroup::Mappend<_Type>,
         {
             type Mappend = #ident<#ty::Mappend>;
 
@@ -258,11 +257,11 @@ newtype_derive! {
             }
         }
 
-        impl<#ty> type_fields::t_funk::typeclass::semigroup::Mappend<type_fields::t_funk::collection::list::hlist::Nil> for #ident<#ty>
+        impl<#ty> t_funk::typeclass::semigroup::Mappend<t_funk::collection::hlist::Nil> for #ident<#ty>
         {
             type Mappend = #ident<#ty>;
 
-            fn mappend(self, _: type_fields::t_funk::collection::list::hlist::Nil) -> Self::Mappend {
+            fn mappend(self, _: t_funk::collection::hlist::Nil) -> Self::Mappend {
                 self
             }
         }
@@ -279,9 +278,9 @@ pub fn monoid(input: TokenStream) -> TokenStream {
 // Derive `Mempty` for a newtype.
 newtype_derive! {
     Mempty::mempty(#ident, #ty) => {
-        impl<#ty> type_fields::t_funk::typeclass::monoid::Mempty for #ident<#ty>
+        impl<#ty> t_funk::typeclass::monoid::Mempty for #ident<#ty>
         where
-            #ty: type_fields::t_funk::typeclass::monoid::Mempty,
+            #ty: t_funk::typeclass::monoid::Mempty,
         {
             type Mempty = #ident<#ty::Mempty>;
 
@@ -295,14 +294,14 @@ newtype_derive! {
 // Derive `Mconcat` for a newtype.
 newtype_derive! {
     Mconcat::mconcat(#ident, #ty) => {
-        impl<T> type_fields::t_funk::typeclass::monoid::Mconcat for #ident<#ty>
+        impl<T> t_funk::typeclass::monoid::Mconcat for #ident<#ty>
         where
-            T: type_fields::t_funk::typeclass::monoid::Mempty + type_fields::t_funk::typeclass::foldable::Foldr<type_fields::t_funk::typeclass::semigroup::MappendF, <#ident<#ty> as type_fields::t_funk::typeclass::monoid::Mempty>::Mempty>,
+            T: t_funk::typeclass::monoid::Mempty + t_funk::typeclass::foldable::Foldr<t_funk::typeclass::semigroup::MappendF, <#ident<#ty> as t_funk::typeclass::monoid::Mempty>::Mempty>,
         {
-            type Mconcat = <#ident<#ty> as type_fields::t_funk::typeclass::foldable::Foldr<type_fields::t_funk::typeclass::semigroup::MappendF, <#ident<#ty> as type_fields::t_funk::typeclass::monoid::Mempty>::Mempty>>::Foldr;
+            type Mconcat = <#ident<#ty> as t_funk::typeclass::foldable::Foldr<t_funk::typeclass::semigroup::MappendF, <#ident<#ty> as t_funk::typeclass::monoid::Mempty>::Mempty>>::Foldr;
 
             fn mconcat(self) -> Self::Mconcat {
-                type_fields::t_funk::typeclass::foldable::Foldr::foldr(self, type_fields::t_funk::typeclass::semigroup::MappendF::default(), <#ident<#ty> as type_fields::t_funk::typeclass::monoid::Mempty>::mempty())
+                t_funk::typeclass::foldable::Foldr::foldr(self, t_funk::typeclass::semigroup::MappendF::default(), <#ident<#ty> as t_funk::typeclass::monoid::Mempty>::mempty())
             }
         }
     }
@@ -323,15 +322,15 @@ pub fn foldable(input: TokenStream) -> TokenStream {
 // Derive `FoldMap` for a newtype.
 newtype_derive! {
     FoldMap::fold_map(#ident, #ty) => {
-        impl<#ty, _Function> type_fields::t_funk::typeclass::foldable::FoldMap<_Function> for #ident<#ty>
+        impl<#ty, _Function> t_funk::typeclass::foldable::FoldMap<_Function> for #ident<#ty>
         where
-            #ident<#ty>: type_fields::t_funk::typeclass::functor::Fmap<_Function>,
-            <#ident<#ty> as type_fields::t_funk::typeclass::functor::Fmap<_Function>>::Fmap: type_fields::t_funk::typeclass::monoid::Mconcat,
+            #ident<#ty>: t_funk::typeclass::functor::Fmap<_Function>,
+            <#ident<#ty> as t_funk::typeclass::functor::Fmap<_Function>>::Fmap: t_funk::typeclass::monoid::Mconcat,
         {
-            type FoldMap = <<#ident<#ty> as type_fields::t_funk::typeclass::functor::Fmap<_Function>>::Fmap as type_fields::t_funk::typeclass::monoid::Mconcat>::Mconcat;
+            type FoldMap = <<#ident<#ty> as t_funk::typeclass::functor::Fmap<_Function>>::Fmap as t_funk::typeclass::monoid::Mconcat>::Mconcat;
 
             fn fold_map(self, f: _Function) -> Self::FoldMap {
-                type_fields::t_funk::typeclass::monoid::Mconcat::mconcat(type_fields::t_funk::typeclass::functor::Fmap::fmap(self, f))
+                t_funk::typeclass::monoid::Mconcat::mconcat(t_funk::typeclass::functor::Fmap::fmap(self, f))
             }
         }
     }
@@ -340,17 +339,17 @@ newtype_derive! {
 // Derive `Foldr` for a newtype.
 newtype_derive! {
     Foldr::foldr(#ident, #ty) => {
-        impl<#ty, _Function, _Acc> type_fields::t_funk::typeclass::foldable::Foldr<_Function, _Acc> for #ident<#ty>
+        impl<#ty, _Function, _Acc> t_funk::typeclass::foldable::Foldr<_Function, _Acc> for #ident<#ty>
         where
-            #ty: type_fields::t_funk::typeclass::foldable::Foldr<_Function, _Acc>,
+            #ty: t_funk::typeclass::foldable::Foldr<_Function, _Acc>,
         {
-            type Foldr = #ident<<#ty as type_fields::t_funk::typeclass::foldable::Foldr<_Function, _Acc>>::Foldr>;
+            type Foldr = #ident<<#ty as t_funk::typeclass::foldable::Foldr<_Function, _Acc>>::Foldr>;
 
             #[allow(non_snake_case)]
             fn foldr(self, f: _Function, z: _Acc) -> Self::Foldr {
                 let #ident(#ty) = self;
                 #ident(
-                    type_fields::t_funk::typeclass::foldable::Foldr::foldr(
+                    t_funk::typeclass::foldable::Foldr::foldr(
                         #ty,
                         f,
                         z
@@ -364,17 +363,17 @@ newtype_derive! {
 // Derive `Foldl` for a newtype.
 newtype_derive! {
     Foldl::foldl(#ident, #ty) => {
-        impl<#ty, _Function, _Acc> type_fields::t_funk::typeclass::foldable::Foldl<_Function, _Acc> for #ident<#ty>
+        impl<#ty, _Function, _Acc> t_funk::typeclass::foldable::Foldl<_Function, _Acc> for #ident<#ty>
         where
-            #ty: type_fields::t_funk::typeclass::foldable::Foldl<_Function, _Acc>,
+            #ty: t_funk::typeclass::foldable::Foldl<_Function, _Acc>,
         {
-            type Foldl = #ident<<#ty as type_fields::t_funk::typeclass::foldable::Foldl<_Function, _Acc>>::Foldl>;
+            type Foldl = #ident<<#ty as t_funk::typeclass::foldable::Foldl<_Function, _Acc>>::Foldl>;
 
             #[allow(non_snake_case)]
             fn foldl(self, f: _Function, z: _Acc) -> Self::Foldl {
                 let #ident(#ty) = self;
                 #ident(
-                    type_fields::t_funk::typeclass::foldable::Foldl::foldl(
+                    t_funk::typeclass::foldable::Foldl::foldl(
                         #ty,
                         f,
                         z
@@ -388,14 +387,14 @@ newtype_derive! {
 // Derive `Fold` for a newtype.
 newtype_derive! {
     Fold::fold(#ident, #ty) => {
-        impl<#ty> type_fields::t_funk::typeclass::foldable::Fold for #ident<#ty>
+        impl<#ty> t_funk::typeclass::foldable::Fold for #ident<#ty>
         where
-            #ident<#ty>: type_fields::t_funk::FoldMap<type_fields::t_funk::function::Id>,
+            #ident<#ty>: t_funk::FoldMap<t_funk::function::Id>,
         {
-            type Fold = <#ident<#ty> as type_fields::t_funk::typeclass::foldable::FoldMap<type_fields::t_funk::function::Id>>::FoldMap;
+            type Fold = <#ident<#ty> as t_funk::typeclass::foldable::FoldMap<t_funk::function::Id>>::FoldMap;
 
             fn fold(self) -> Self::Fold {
-                type_fields::t_funk::typeclass::foldable::FoldMap::<type_fields::t_funk::function::Id>::fold_map(self, type_fields::t_funk::function::Id)
+                t_funk::typeclass::foldable::FoldMap::<t_funk::function::Id>::fold_map(self, t_funk::function::Id)
             }
         }
     }
@@ -411,11 +410,11 @@ pub fn category(input: TokenStream) -> TokenStream {
 // Derive `Id` for a `Function`.
 newtype_derive! {
     Id::id(#ident, #ty) => {
-        impl<#ty> type_fields::t_funk::typeclass::category::Id for #ident<#ty> where #ident<#ty>: Default {
-            type Id = type_fields::t_funk::function::Id;
+        impl<#ty> t_funk::typeclass::category::Id for #ident<#ty> where #ident<#ty>: Default {
+            type Id = t_funk::function::Id;
 
             fn id() -> Self::Id {
-                type_fields::t_funk::function::Id
+                t_funk::function::Id
             }
         }
     }
@@ -424,10 +423,10 @@ newtype_derive! {
 // Derive `Compose` for a `Function`.
 newtype_derive! {
     Compose::compose(#ident, #ty) => {
-        impl<_Function, #ty> type_fields::t_funk::typeclass::category::Compose<_Function> for #ident<#ty> {
-            type Compose = type_fields::t_funk::closure::Composed<Self, _Function>;
+        impl<_Function, #ty> t_funk::typeclass::category::Compose<_Function> for #ident<#ty> {
+            type Compose = t_funk::closure::Composed<Self, _Function>;
             fn compose(self, f: _Function) -> Self::Compose {
-                type_fields::t_funk::closure::Composed(self, f)
+                t_funk::closure::Composed(self, f)
             }
         }
     }
@@ -451,7 +450,7 @@ pub fn arrow(input: TokenStream) -> TokenStream {
 // Derive `Arr` for a `Function`.
 newtype_derive! {
     Arr::arr(#ident, #ty) => {
-        impl<_Function, #ty> type_fields::t_funk::typeclass::arrow::Arr<_Function> for #ident<#ty>
+        impl<_Function, #ty> t_funk::typeclass::arrow::Arr<_Function> for #ident<#ty>
         {
             type Arr = _Function;
 
@@ -465,12 +464,12 @@ newtype_derive! {
 // Derive `arrow::First` for a `Function`.
 newtype_derive! {
     ArrowFirst::arrow_first(#ident, #ty) => {
-        impl<#ty> type_fields::t_funk::typeclass::arrow::First for #ident<#ty>
+        impl<#ty> t_funk::typeclass::arrow::First for #ident<#ty>
         {
-            type First = type_fields::t_funk::typeclass::arrow::Firsted<#ident<#ty>>;
+            type First = t_funk::typeclass::arrow::Firsted<#ident<#ty>>;
 
             fn first(self) -> Self::First {
-                type_fields::t_funk::typeclass::arrow::Firsted(self)
+                t_funk::typeclass::arrow::Firsted(self)
             }
         }
     }
@@ -479,12 +478,12 @@ newtype_derive! {
 // Derive `arrow::Second` for a `Function`.
 newtype_derive! {
     ArrowSecond::arrow_second(#ident, #ty) => {
-        impl<#ty> type_fields::t_funk::typeclass::arrow::Second for #ident<#ty>
+        impl<#ty> t_funk::typeclass::arrow::Second for #ident<#ty>
         {
-            type Second = type_fields::t_funk::typeclass::arrow::Seconded<#ident<#ty>>;
+            type Second = t_funk::typeclass::arrow::Seconded<#ident<#ty>>;
 
             fn second(self) -> Self::Second {
-                type_fields::t_funk::typeclass::arrow::Seconded(self)
+                t_funk::typeclass::arrow::Seconded(self)
             }
         }
     }
@@ -493,11 +492,11 @@ newtype_derive! {
 // Derive `Split` for a `Function`.
 newtype_derive! {
     Split::split(#ident, #ty) => {
-        impl<_Arrow, #ty> type_fields::t_funk::typeclass::arrow::Split<_Arrow> for #ident<#ty> {
-            type Split = type_fields::t_funk::typeclass::arrow::Splitted<Self, _Arrow>;
+        impl<_Arrow, #ty> t_funk::typeclass::arrow::Split<_Arrow> for #ident<#ty> {
+            type Split = t_funk::typeclass::arrow::Splitted<Self, _Arrow>;
 
             fn split(self, a: _Arrow) -> Self::Split {
-                type_fields::t_funk::typeclass::arrow::Splitted(self, a)
+                t_funk::typeclass::arrow::Splitted(self, a)
             }
         }
     }
@@ -506,12 +505,12 @@ newtype_derive! {
 // Derive `Fanout` for a `Split` implementor.
 newtype_derive! {
     Fanout::fanout(#ident, #ty) => {
-        impl<_Arrow, #ty> type_fields::t_funk::typeclass::arrow::Fanout<_Arrow> for #ident<#ty>
+        impl<_Arrow, #ty> t_funk::typeclass::arrow::Fanout<_Arrow> for #ident<#ty>
         {
-            type Fanout = type_fields::t_funk::typeclass::arrow::Fanouted<Self, _Arrow>;
+            type Fanout = t_funk::typeclass::arrow::Fanouted<Self, _Arrow>;
 
             fn fanout(self, f: _Arrow) -> Self::Fanout {
-                type_fields::t_funk::typeclass::arrow::Fanouted(self, f)
+                t_funk::typeclass::arrow::Fanouted(self, f)
             }
         }
     }

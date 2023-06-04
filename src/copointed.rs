@@ -18,7 +18,7 @@ pub fn impl_copointed(input: DeriveInput) -> TokenStream {
     };
 
     let out = quote!(
-        impl<#(#tys),*> type_fields::t_funk::typeclass::Copointed for #ident<#(#tys),*> {
+        impl<#(#tys),*> t_funk::typeclass::Copointed for #ident<#(#tys),*> {
             type Copointed = #copointed;
 
             #[allow(non_snake_case)]

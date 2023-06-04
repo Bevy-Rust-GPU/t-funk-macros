@@ -41,13 +41,13 @@ pub fn impl_lenses(input: DeriveInput) -> TokenStream {
                 PartialOrd,
                 Ord,
                 Hash,
-                type_fields::t_funk::macros::Closure,
-                type_fields::t_funk::macros::category::Id,
-                type_fields::t_funk::macros::category::Compose,
+                t_funk::macros::Closure,
+                t_funk::macros::category::Id,
+                t_funk::macros::category::Compose,
             )]
             #vis struct #getter;
 
-            impl type_fields::t_funk::function::Function<#ident> for #getter {
+            impl t_funk::function::Function<#ident> for #getter {
                 type Output = #ty;
 
                 fn call(t: #ident) -> Self::Output {
@@ -65,13 +65,13 @@ pub fn impl_lenses(input: DeriveInput) -> TokenStream {
                 PartialOrd,
                 Ord,
                 Hash,
-                type_fields::t_funk::macros::Closure,
-                type_fields::t_funk::macros::category::Id,
-                type_fields::t_funk::macros::category::Compose,
+                t_funk::macros::Closure,
+                t_funk::macros::category::Id,
+                t_funk::macros::category::Compose,
             )]
             #vis struct #setter;
 
-            impl type_fields::t_funk::function::Function<(#ident, #ty)> for #setter {
+            impl t_funk::function::Function<(#ident, #ty)> for #setter {
                 type Output = #ident;
 
                 fn call((this, #path): (#ident, #ty)) -> Self::Output {
@@ -84,10 +84,10 @@ pub fn impl_lenses(input: DeriveInput) -> TokenStream {
 
             impl #impl_generics #ident #ty_generics #where_clause {
                 #[allow(non_upper_case_globals)]
-                #vis const #path: type_fields::t_funk::lens::Lens<
+                #vis const #path: t_funk::lens::Lens<
                     #getter,
                     #setter,
-                > = type_fields::t_funk::lens::lens(
+                > = t_funk::lens::lens(
                     #getter,
                     #setter,
                 );
