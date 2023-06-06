@@ -12,13 +12,24 @@ pub fn impl_copointed(input: DeriveInput) -> TokenStream {
         .collect::<Vec<_>>();
 
     let copointed = match tys.len() {
-        0 => panic!("Can't derive Copointed for a type with no inner."),
+        0 => {
+            return quote!(
+                impl t_funk::typeclass::copointed::Copointed for #ident {
+                    type Copointed = Self;
+
+                    fn copoint(self) -> Self::Copointed {
+                        self
+                    }
+                }
+            )
+            .into()
+        }
         1 => quote!(#(#tys),*),
         _ => quote!((#(#tys),*)),
     };
 
     let out = quote!(
-        impl<#(#tys),*> t_funk::typeclass::Copointed for #ident<#(#tys),*> {
+        impl<#(#tys),*> t_funk::typeclass::copointed::Copointed for #ident<#(#tys),*> {
             type Copointed = #copointed;
 
             #[allow(non_snake_case)]

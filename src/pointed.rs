@@ -12,7 +12,18 @@ pub fn impl_pointed(input: DeriveInput) -> TokenStream {
         .collect::<Vec<_>>();
 
     let pointed = match tys.len() {
-        0 => panic!("Can't derive Pointed for a type with no inner."),
+        0 => {
+            return quote!(
+                impl t_funk::typeclass::pointed::Pointed for #ident {
+                    type Pointed = Self;
+
+                    fn point(input: Self::Pointed) -> Self {
+                        input
+                    }
+                }
+            )
+            .into()
+        }
         1 => quote!(#(#tys),*),
         _ => quote!((#(#tys),*)),
     };

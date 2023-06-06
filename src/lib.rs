@@ -2,8 +2,12 @@ extern crate proc_macro;
 
 mod closure;
 mod copointed;
+mod define_adt;
 mod functions;
+mod types;
+mod impl_adt;
 mod lenses;
+mod lift;
 mod phantom;
 mod pointed;
 
@@ -62,6 +66,25 @@ pub fn phantom_copy(input: TokenStream) -> TokenStream {
     phantom::copy::impl_phantom_copy(parse_macro_input!(input))
 }
 
+#[proc_macro]
+pub fn define_adt(input: TokenStream) -> TokenStream {
+    define_adt::impl_define_adt(parse_macro_input!(input))
+}
+
+#[proc_macro]
+pub fn impl_adt(input: TokenStream) -> TokenStream {
+    impl_adt::impl_impl_adt(parse_macro_input!(input))
+}
+
+/// Lift a pure function so it can be named and called at the type level.
+///
+/// This is achieved by creating a corresponding struct
+/// that implements `Function` and derives `Closure`.
+#[proc_macro_attribute]
+pub fn lift(_: TokenStream, input: TokenStream) -> TokenStream {
+    lift::impl_lift(parse_macro_input!(input))
+}
+
 /// Create a struct and corresponding `Function` implementation
 /// for each function in the  provided trait.
 /// Created structs are named by Pascal-casing their function name,
@@ -70,6 +93,12 @@ pub fn phantom_copy(input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn functions(_: TokenStream, input: TokenStream) -> TokenStream {
     functions::impl_functions(parse_macro_input!(input))
+}
+
+/// Create type aliases for each associated type in the provided trait
+#[proc_macro_attribute]
+pub fn types(_: TokenStream, input: TokenStream) -> TokenStream {
+    types::impl_types(parse_macro_input!(input))
 }
 
 /// Derive `Closure<T>` for a type that implements `Function<T>`.
