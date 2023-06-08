@@ -12,7 +12,7 @@ pub fn impl_phantom_clone(input: DeriveInput) -> TokenStream {
         .collect::<Vec<_>>();
 
     let out = quote!(impl<#(#tys),*> Clone for #ident < #(#tys),* > {
-        fn clone(self) -> Self {
+        fn clone(&self) -> Self {
             Self(Default::default())
         }
     });

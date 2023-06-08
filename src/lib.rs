@@ -4,12 +4,12 @@ mod closure;
 mod copointed;
 mod define_adt;
 mod functions;
-mod types;
 mod impl_adt;
 mod lenses;
 mod lift;
 mod phantom;
 mod pointed;
+mod types;
 
 use proc_macro::TokenStream;
 use syn::parse_macro_input;
@@ -170,11 +170,11 @@ pub fn applicative(input: TokenStream) -> TokenStream {
 // Derive `Pure` for a newtype.
 newtype_derive! {
     Pure::pure(#ident, #ty) => {
-        impl<#ty> t_funk::typeclass::applicative::Pure for #ident<#ty>
+        impl<#ty, U> t_funk::typeclass::applicative::Pure<U> for #ident<#ty>
         {
-            type Pure<U> = #ident<U>;
+            type Pure = #ident<U>;
 
-            fn pure<U>(t: U) -> Self::Pure<U> {
+            fn pure(t: U) -> Self::Pure {
                 #ident(t)
             }
         }
@@ -208,8 +208,13 @@ newtype_derive! {
 #[proc_macro_derive(Monad)]
 pub fn monad(input: TokenStream) -> TokenStream {
     let chain = chain(input.clone());
-    let then = then(input);
-    chain.into_iter().chain(then.into_iter()).collect()
+    let then = then(input.clone());
+    let r#return = r#return(input);
+    chain
+        .into_iter()
+        .chain(then.into_iter())
+        .chain(r#return.into_iter())
+        .collect()
 }
 
 // Derive `Chain` for a newtype.
@@ -256,6 +261,19 @@ newtype_derive! {
 
             fn then(self, f: _Function) -> Self::Then {
                t_funk::typeclass::monad::Chain::<_>::chain(self, t_funk::closure::Curry2::prefix2(t_funk::function::Const, f))
+            }
+        }
+    }
+}
+
+newtype_derive! {
+    Return::r#return(#ident, #ty) => {
+        impl<#ty, _Type> t_funk::typeclass::monad::Return<_Type> for #ident<#ty>
+        {
+            type Return = #ident<_Type>;
+
+            fn r#return(t: _Type) -> Self::Return {
+                #ident(t)
             }
         }
     }
@@ -311,10 +329,10 @@ newtype_derive! {
         where
             #ty: t_funk::typeclass::monoid::Mempty,
         {
-            type Mempty = #ident<#ty::Mempty>;
+            type Mempty = #ty::Mempty;
 
             fn mempty() -> Self::Mempty {
-                #ident(#ty::mempty())
+                #ty::mempty()
             }
         }
     }
