@@ -28,6 +28,7 @@ pub struct AdtInput {
     pub attrs: Vec<Attribute>,
     pub vis: Visibility,
     pub struct_token: Token![struct],
+    pub ident: Ident,
     pub eq_token: Token![=],
     pub target_tys: Punctuated<StructArg, Token![|]>,
     pub semi_token: Token![;],
@@ -38,6 +39,7 @@ impl Parse for AdtInput {
         let attrs = input.call(Attribute::parse_outer)?;
         let vis = input.parse()?;
         let struct_token = input.parse()?;
+        let ident = input.parse()?;
         let eq_token = input.parse()?;
         let target_tys = Punctuated::parse_separated_nonempty(input)?;
         let semi_token = input.parse()?;
@@ -46,6 +48,7 @@ impl Parse for AdtInput {
             attrs,
             vis,
             struct_token,
+            ident,
             eq_token,
             target_tys,
             semi_token,
