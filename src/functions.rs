@@ -103,7 +103,7 @@ fn impl_function(
         })
         .collect::<Vec<_>>();
 
-    let mut phantom_types = gen_types
+    let phantom_types = gen_types
         .iter()
         .cloned()
         .filter(|ident| {
@@ -117,7 +117,11 @@ fn impl_function(
         .collect::<Vec<_>>();
 
     if input_tys.len() == 0 {
-        phantom_types = vec![Ident::new("_Type", Span::call_site())];
+        input_tys = vec![Type::Path(TypePath {
+            path: Ident::new("_Type", Span::call_site()).into(),
+            qself: None,
+        })
+        .into()];
     }
 
     let struct_body = if phantom_types.len() == 0 {
