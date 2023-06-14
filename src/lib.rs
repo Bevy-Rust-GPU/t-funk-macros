@@ -10,6 +10,7 @@ mod lift;
 mod phantom;
 mod pointed;
 mod types;
+mod set;
 
 use proc_macro::TokenStream;
 use syn::parse_macro_input;
@@ -561,4 +562,9 @@ newtype_derive! {
             }
         }
     }
+}
+
+#[proc_macro_attribute]
+pub fn set(_: TokenStream, input: TokenStream) -> TokenStream {
+    set::impl_set(parse_macro_input!(input))
 }
