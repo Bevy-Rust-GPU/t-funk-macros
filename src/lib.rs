@@ -1,16 +1,18 @@
 extern crate proc_macro;
 
+mod generics_visitor;
 mod closure;
 mod copointed;
 mod define_adt;
+mod field_attr_visitor;
 mod functions;
 mod impl_adt;
 mod lenses;
 mod lift;
 mod phantom;
 mod pointed;
-mod types;
 mod set;
+mod types;
 
 use proc_macro::TokenStream;
 use syn::parse_macro_input;

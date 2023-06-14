@@ -1,12 +1,14 @@
-use std::collections::BTreeMap;
-
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn::{
-    parse_quote, visit::Visit, visit_mut::VisitMut, Attribute, Expr, ExprAssign, Field,
-    GenericArgument, GenericParam, Generics, Ident, ItemStruct, Meta, MetaNameValue, Path,
-    PathArguments, PathSegment, Token, Type, TypeParam,
+    visit_mut::VisitMut, Expr, ExprAssign, Field, GenericArgument, Ident, ItemStruct, Path,
+    PathArguments, Type, TypePath,
+};
+
+use crate::{
+    field_attr_visitor::{AttrConstructor, FieldAttrVisitor},
+    generics_visitor::GenericsVisitor,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -30,149 +32,82 @@ enum Attr {
     Set(SetAttr),
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
-struct FieldVisitor {
-    pub newtype_attrs: Vec<Attr>,
+fn attr_newtype(field: &Field, type_path: &TypePath, value: &Expr) -> Vec<Attr> {
+    let Expr::Path(expr_path) = value else {
+        panic!("Newtypes must be path expressions");
+    };
+
+    let field_ident = field.ident.clone().expect("Field is unnamed");
+    let newtype_path = type_path.path.clone();
+    let type_path = expr_path.path.clone();
+
+    vec![Attr::Newtype(NewtypeAttr {
+        field_ident,
+        newtype_path,
+        type_path,
+    })]
 }
 
-impl VisitMut for FieldVisitor {
-    fn visit_field_mut(&mut self, field: &mut Field) {
-        field.attrs = field
-            .attrs
-            .iter()
-            .cloned()
-            .filter(
-                |Attribute {
-                     pound_token: _,
-                     style: _,
-                     bracket_token: _,
-                     meta,
-                 }: &Attribute| {
-                    let Meta::NameValue(MetaNameValue {
-                        path,
-                        eq_token: _,
-                        value,
-                    }) = meta else {
-                        return true;
-                    };
+fn attr_set(field: &Field, type_path: &TypePath, value: &Expr) -> Vec<Attr> {
+    let Expr::Array(expr_array) = value else {
+        panic!("Sets must be array expressions");
+    };
 
-                    let Some(ident) = path.get_ident() else {
-                        return true;
-                    };
-
-                    let key = ident.to_string();
-
-                    let Type::Path(type_path) = &field.ty else {
-                        panic!("Set types must be path types");
-                    };
-
-                    match key.as_str() {
-                        "newtype" => {
-                            let Expr::Path(expr_path) = value else {
-                                panic!("Newtypes must be path expressions");
-                            };
-
-                            let field_ident = field.ident.clone().expect("Field is unnamed");
-                            let newtype_path = type_path.path.clone();
-                            let type_path = expr_path.path.clone();
-
-                            self.newtype_attrs.push(Attr::Newtype(NewtypeAttr {
-                                field_ident,
-                                newtype_path,
-                                type_path,
-                            }));
-
-                            return false;
-                        }
-                        "set" => {
-                            let Expr::Array(expr_array) = value else {
-                                panic!("Sets must be array expressions");
-                            };
-
-                            let type_paths = expr_array
-                                .elems
-                                .iter()
-                                .map(|expr| {
-                                    let Expr::Assign(ExprAssign {
+    let type_paths = expr_array
+        .elems
+        .iter()
+        .map(|expr| {
+            let Expr::Assign(ExprAssign {
                                         left, right, ..
                                     }) = expr else {
                                         panic!("Newtypes must be assignment expressions");
                                     };
 
-                                    let Expr::Path(key) = *left.clone() else {
+            let Expr::Path(key) = *left.clone() else {
                                         panic!("Assignment LHS must be a path");
                                     };
 
-                                    let Expr::Path(value) = *right.clone() else {
+            let Expr::Path(value) = *right.clone() else {
                                         panic!("Assignment LHS must be a path");
                                     };
 
-                                    (key.path.clone(), value.path.clone())
-                                })
-                                .collect::<Vec<_>>();
+            (key.path.clone(), value.path.clone())
+        })
+        .collect::<Vec<_>>();
 
-                            let field_ident = field.ident.as_ref().expect("Field is unnamed");
-                            let set_path = &type_path.path;
+    let field_ident = field.ident.as_ref().expect("Field is unnamed");
+    let set_path = &type_path.path;
 
-                            for (newtype_path, type_path) in type_paths {
-                                let field_ident = field_ident.clone();
-                                let set_path = set_path.clone();
-                                self.newtype_attrs.push(Attr::Set(SetAttr {
-                                    field_ident,
-                                    set_path,
-                                    newtype_path,
-                                    type_path,
-                                }));
-                            }
-
-                            return false;
-                        }
-                        _ => (),
-                    }
-
-                    true
-                },
-            )
-            .collect();
-
-        syn::visit_mut::visit_field_mut(self, field)
-    }
-}
-
-#[derive(Debug, Clone)]
-struct GenericsVisitor {
-    pub from: Ident,
-    pub to: TokenStream2,
-    pub generics: Vec<TokenStream2>,
-}
-
-impl Visit<'_> for GenericsVisitor {
-    fn visit_generic_param(&mut self, generic_param: &GenericParam) {
-        match &generic_param {
-            GenericParam::Type(ref ty) => {
-                if ty.ident == self.from {
-                    self.generics.push(self.to.clone())
-                } else {
-                    self.generics.push(quote!(#generic_param))
-                }
-            }
-            _ => self.generics.push(quote!(#generic_param)),
-        }
-
-        syn::visit::visit_generic_param(self, generic_param)
-    }
+    type_paths
+        .into_iter()
+        .map(move |(newtype_path, type_path)| {
+            let field_ident = field_ident.clone();
+            let set_path = set_path.clone();
+            Attr::Set(SetAttr {
+                field_ident,
+                set_path,
+                newtype_path,
+                type_path,
+            })
+        })
+        .collect::<Vec<_>>()
 }
 
 pub fn impl_set(mut item_struct: ItemStruct) -> TokenStream {
+    let mut field_visitor = FieldAttrVisitor {
+        constructors: [
+            ("newtype", Box::new(attr_newtype) as AttrConstructor<Attr>),
+            ("set", Box::new(attr_set) as AttrConstructor<Attr>),
+        ]
+        .into_iter()
+        .collect(),
+        ..Default::default()
+    };
+    field_visitor.visit_item_struct_mut(&mut item_struct);
+    let set_attrs = field_visitor.outputs;
+
     let struct_ident = item_struct.ident.clone();
     let struct_generics = item_struct.generics.clone();
-
-    let mut field_visitor = FieldVisitor::default();
-    field_visitor.visit_item_struct_mut(&mut item_struct);
-
-    let FieldVisitor {
-        newtype_attrs: set_attrs,
-    } = field_visitor;
 
     // Vec of struct generics for quote destructuring
     let struct_generics_list = struct_generics.params.iter().cloned().collect::<Vec<_>>();
@@ -199,63 +134,72 @@ pub fn impl_set(mut item_struct: ItemStruct) -> TokenStream {
 
     let mut out = quote!(#item_struct);
 
-    let visit_generics = |from: Ident, to: TokenStream2| {
-        // Struct generics with current field T replaced with Newtype<T>
-        let mut generics_visitor = GenericsVisitor {
-            from,
-            to,
-            generics: Default::default(),
-        };
-        generics_visitor.visit_generics(&struct_generics);
-
-        return generics_visitor.generics;
-    };
-
     let t_ident = Ident::new("_T", Span::call_site());
 
     for attr in &set_attrs {
-        match attr {
+        let (field_ident, newtype_path, type_path) = match attr {
             Attr::Newtype(NewtypeAttr {
                 field_ident,
                 newtype_path,
                 type_path,
-            }) => {
-                // Struct generics with current field T replaced with Newtype<T>
-                let struct_newtype_generics = visit_generics(
-                    newtype_path.get_ident().unwrap().clone(),
-                    quote!(#type_path),
-                );
+            })
+            | Attr::Set(SetAttr {
+                field_ident,
+                newtype_path,
+                type_path,
+                ..
+            }) => (field_ident, newtype_path, type_path),
+        };
 
-                // Struct generics with current field T replaced with Newtype<_T>
-                let t_value = {
-                    let mut t_value = type_path.clone();
-                    let PathArguments::AngleBracketed(args) = &mut t_value.segments[0].arguments else {
+        // Struct generics with current field T replaced with Newtype<T>
+        let struct_newtype_generics = GenericsVisitor {
+            from: newtype_path.get_ident().unwrap().clone(),
+            to: quote!(#type_path),
+            generics: Default::default(),
+        }
+        .visit(&struct_generics);
+
+        // Struct generics with current field T replaced with ()
+        let struct_removed_generics = GenericsVisitor {
+            from: newtype_path.get_ident().unwrap().clone(),
+            to: quote!(()),
+            generics: Default::default(),
+        }
+        .visit(&struct_generics);
+
+        // Struct generics with current field T replaced with Newtype<_T>
+        let t_value = {
+            let mut t_value = type_path.clone();
+            let PathArguments::AngleBracketed(args) = &mut t_value.segments[0].arguments else {
                         panic!("Arguments are not angle-bracketed");
                     };
 
-                    let GenericArgument::Type(Type::Path(type_path)) = &mut args.args[0] else {
+            let GenericArgument::Type(Type::Path(type_path)) = &mut args.args[0] else {
                         panic!("Generic argument is not a type path");
                     };
 
-                    let seg = &mut type_path.path.segments[0];
-                    seg.ident = t_ident.clone();
+            let seg = &mut type_path.path.segments[0];
+            seg.ident = t_ident.clone();
 
-                    t_value
-                };
+            t_value
+        };
 
-                let struct_t_generics =
-                    visit_generics(newtype_path.get_ident().unwrap().clone(), quote!(#t_value));
+        let struct_t_generics = GenericsVisitor {
+            from: newtype_path.get_ident().unwrap().clone(),
+            to: quote!(#t_value),
+            generics: Default::default(),
+        }
+        .visit(&struct_generics);
 
-                // Struct generics with current field T replaced with ()
-                let struct_removed_generics =
-                    visit_generics(newtype_path.get_ident().unwrap().clone(), quote!(()));
+        // List of field idents minus the current field
+        let field_idents_filtered = field_idents
+            .iter()
+            .filter(|a| *a != field_ident)
+            .collect::<Vec<_>>();
 
-                // List of field idents minus the current field
-                let field_idents_filtered = field_idents
-                    .iter()
-                    .filter(|a| *a != field_ident)
-                    .collect::<Vec<_>>();
-
+        // Get / Insert / Remove impls
+        match attr {
+            Attr::Newtype(NewtypeAttr { .. }) => {
                 out = quote!(
                     #out
 
@@ -287,48 +231,7 @@ pub fn impl_set(mut item_struct: ItemStruct) -> TokenStream {
                     }
                 );
             }
-            Attr::Set(SetAttr {
-                field_ident,
-                newtype_path,
-                type_path,
-                ..
-            }) => {
-                // Struct generics with current field T replaced with Newtype<T>
-                let struct_newtype_generics = visit_generics(
-                    newtype_path.get_ident().unwrap().clone(),
-                    quote!(#type_path),
-                );
-
-                // Struct generics with current field T replaced with ()
-                let struct_removed_generics =
-                    visit_generics(newtype_path.get_ident().unwrap().clone(), quote!(()));
-
-                // Struct generics with current field T replaced with Newtype<_T>
-                let t_value = {
-                    let mut t_value = type_path.clone();
-                    let PathArguments::AngleBracketed(args) = &mut t_value.segments[0].arguments else {
-                        panic!("Arguments are not angle-bracketed");
-                    };
-
-                    let GenericArgument::Type(Type::Path(type_path)) = &mut args.args[0] else {
-                        panic!("Generic argument is not a type path");
-                    };
-
-                    let seg = &mut type_path.path.segments[0];
-                    seg.ident = t_ident.clone();
-
-                    t_value
-                };
-
-                let struct_t_generics =
-                    visit_generics(newtype_path.get_ident().unwrap().clone(), quote!(#t_value));
-
-                // List of field idents minus the current field
-                let field_idents_filtered = field_idents
-                    .iter()
-                    .filter(|a| *a != field_ident)
-                    .collect::<Vec<_>>();
-
+            Attr::Set(SetAttr { .. }) => {
                 out = quote!(
                     #out
 
@@ -373,6 +276,7 @@ pub fn impl_set(mut item_struct: ItemStruct) -> TokenStream {
         }
     }
 
+    // Empty impl
     let mut empties = Vec::<TokenStream2>::default();
     for field in &field_idents {
         let attr = set_attrs
