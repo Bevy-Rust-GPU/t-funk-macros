@@ -260,9 +260,7 @@ pub fn impl_set(mut item_struct: ItemStruct) -> TokenStream {
                     #out
 
                     impl < #(#struct_generics_list),* > t_funk::collection::set::Get<#type_path> for #struct_ident < #(#struct_newtype_generics),* > {
-                        type Get = #type_path;
-
-                        fn get(self) -> Self::Get {
+                        fn get(self) -> #type_path {
                             self.#field_ident
                         }
                     }
@@ -335,10 +333,8 @@ pub fn impl_set(mut item_struct: ItemStruct) -> TokenStream {
                     #out
 
                     impl < #(#struct_generics_list),* > t_funk::collection::set::Get<#type_path> for #struct_ident < #(#struct_newtype_generics),* > {
-                        type Get = #type_path;
-
-                        fn get(self) -> Self::Get {
-                            t_funk::collection::set::Get::<#type_path>::get(self.#field_ident)
+                        fn get(self) -> #type_path {
+                            self.#field_ident.get()
                         }
                     }
 
