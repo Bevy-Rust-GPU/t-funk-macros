@@ -1,11 +1,11 @@
 extern crate proc_macro;
 
-mod generics_visitor;
 mod closure;
 mod copointed;
 mod define_adt;
 mod field_attr_visitor;
 mod functions;
+mod generics_visitor;
 mod impl_adt;
 mod lenses;
 mod lift;
@@ -13,6 +13,7 @@ mod phantom;
 mod pointed;
 mod set;
 mod types;
+mod tuple;
 
 use proc_macro::TokenStream;
 use syn::parse_macro_input;
@@ -41,6 +42,16 @@ macro_rules! newtype_derive {
             out.into()
         }
     }
+}
+
+#[proc_macro]
+pub fn impl_tuple_foldl(input: TokenStream) -> TokenStream {
+    tuple::impl_tuple_foldl(parse_macro_input!(input))
+}
+
+#[proc_macro]
+pub fn impl_tuple_foldr(input: TokenStream) -> TokenStream {
+    tuple::impl_tuple_foldr(parse_macro_input!(input))
 }
 
 /// For each field in the annotated struct:
@@ -344,14 +355,14 @@ newtype_derive! {
 // Derive `Mconcat` for a newtype.
 newtype_derive! {
     Mconcat::mconcat(#ident, #ty) => {
-        impl<T> t_funk::typeclass::monoid::Mconcat for #ident<#ty>
+        impl<#ty> t_funk::typeclass::monoid::Mconcat for #ident<#ty>
         where
-            T: t_funk::typeclass::monoid::Mempty + t_funk::typeclass::foldable::Foldr<t_funk::typeclass::semigroup::MappendF, <#ident<#ty> as t_funk::typeclass::monoid::Mempty>::Mempty>,
+            #ty: t_funk::typeclass::monoid::Mconcat,
         {
-            type Mconcat = <#ident<#ty> as t_funk::typeclass::foldable::Foldr<t_funk::typeclass::semigroup::MappendF, <#ident<#ty> as t_funk::typeclass::monoid::Mempty>::Mempty>>::Foldr;
+            type Mconcat = #ident<t_funk::typeclass::monoid::MconcatT<#ty>>;
 
             fn mconcat(self) -> Self::Mconcat {
-                t_funk::typeclass::foldable::Foldr::foldr(self, t_funk::typeclass::semigroup::MappendF::default(), <#ident<#ty> as t_funk::typeclass::monoid::Mempty>::mempty())
+                #ident(self.0.mconcat())
             }
         }
     }
@@ -391,20 +402,14 @@ newtype_derive! {
     Foldr::foldr(#ident, #ty) => {
         impl<#ty, _Function, _Acc> t_funk::typeclass::foldable::Foldr<_Function, _Acc> for #ident<#ty>
         where
-            #ty: t_funk::typeclass::foldable::Foldr<_Function, _Acc>,
+            _Function: t_funk::closure::Closure<(#ty, _Acc)>,
         {
-            type Foldr = #ident<<#ty as t_funk::typeclass::foldable::Foldr<_Function, _Acc>>::Foldr>;
+            type Foldr = t_funk::closure::OutputT<_Function, (#ty, _Acc)>;
 
             #[allow(non_snake_case)]
             fn foldr(self, f: _Function, z: _Acc) -> Self::Foldr {
                 let #ident(#ty) = self;
-                #ident(
-                    t_funk::typeclass::foldable::Foldr::foldr(
-                        #ty,
-                        f,
-                        z
-                    )
-                )
+                f.call((#ty, z))
             }
         }
     }
@@ -415,20 +420,14 @@ newtype_derive! {
     Foldl::foldl(#ident, #ty) => {
         impl<#ty, _Function, _Acc> t_funk::typeclass::foldable::Foldl<_Function, _Acc> for #ident<#ty>
         where
-            #ty: t_funk::typeclass::foldable::Foldl<_Function, _Acc>,
+            _Function: t_funk::closure::Closure<(_Acc, #ty)>,
         {
-            type Foldl = #ident<<#ty as t_funk::typeclass::foldable::Foldl<_Function, _Acc>>::Foldl>;
+            type Foldl = t_funk::closure::OutputT<_Function, (_Acc, #ty)>;
 
             #[allow(non_snake_case)]
             fn foldl(self, f: _Function, z: _Acc) -> Self::Foldl {
                 let #ident(#ty) = self;
-                #ident(
-                    t_funk::typeclass::foldable::Foldl::foldl(
-                        #ty,
-                        f,
-                        z
-                    )
-                )
+                f.call((z, #ty))
             }
         }
     }
