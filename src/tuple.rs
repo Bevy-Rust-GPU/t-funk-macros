@@ -15,22 +15,22 @@ pub fn impl_tuple_foldl(Input(inputs): Input) -> TokenStream {
     let inputs = inputs.into_iter().collect::<Vec<_>>();
 
     let mut out_type = quote!(_Zero);
-    for input in inputs.iter().rev() {
-        out_type = quote!(OutputT<_Function, (#input, #out_type)>);
+    for input in inputs.iter() {
+        out_type = quote!(OutputT<_Function, (#out_type, #input)>);
     }
 
     let mut out_expr = quote!(z);
-    for input in inputs.iter().rev() {
-        out_expr = quote!(f.clone().call((#input, #out_expr)));
+    for input in inputs.iter() {
+        out_expr = quote!(f.clone().call((#out_expr, #input)));
     }
 
     let mut out_where = quote!(Clone);
-    for (i, input) in inputs.iter().enumerate() {
+    for (i, input) in inputs.iter().rev().enumerate() {
         let mut out_line = quote!(_Zero);
-        for input in inputs.iter().rev().take(inputs.len() - i - 1) {
-            out_line = quote!(OutputT<_Function, (#input, #out_line)>);
+        for input in inputs.iter().take(inputs.len() - i - 1) {
+            out_line = quote!(OutputT<_Function, (#out_line, #input)>);
         }
-        out_line = quote!((#input, #out_line));
+        out_line = quote!((#out_line, #input));
         out_where = quote!(
             #out_where + Closure<#out_line>
         );
@@ -61,21 +61,21 @@ pub fn impl_tuple_foldr(Input(inputs): Input) -> TokenStream {
 
     let mut out_type = quote!(_Zero);
     for input in inputs.iter().rev() {
-        out_type = quote!(OutputT<_Function, (#out_type, #input)>);
+        out_type = quote!(OutputT<_Function, (#input, #out_type)>);
     }
 
     let mut out_expr = quote!(z);
     for input in inputs.iter().rev() {
-        out_expr = quote!(f.clone().call((#out_expr, #input)));
+        out_expr = quote!(f.clone().call((#input, #out_expr)));
     }
 
     let mut out_where = quote!(Clone);
     for (i, input) in inputs.iter().enumerate() {
         let mut out_line = quote!(_Zero);
         for input in inputs.iter().rev().take(inputs.len() - i - 1) {
-            out_line = quote!(OutputT<_Function, (#out_line, #input)>);
+            out_line = quote!(OutputT<_Function, (#input, #out_line)>);
         }
-        out_line = quote!((#out_line, #input));
+        out_line = quote!((#input, #out_line));
         out_where = quote!(
             #out_where + Closure<#out_line>
         );
