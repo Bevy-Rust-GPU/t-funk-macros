@@ -6,7 +6,7 @@ pub struct Input(Punctuated<Ident, Comma>);
 
 impl Parse for Input {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let punctuated = Punctuated::parse_separated_nonempty(input)?;
+        let punctuated = Punctuated::parse_terminated(input)?;
         Ok(Input(punctuated))
     }
 }
